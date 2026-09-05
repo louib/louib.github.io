@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+        <loc>https://louib.net/</loc>
+    </url>
+    <url>
+        <loc>https://louib.net/blog/</loc>
+    </url>
+    <url>
+        <loc>https://louib.net/blog/nix_longest_path/</loc>
+        <lastmod>2024-06-03</lastmod>
+    </url>
+    <url>
+        <loc>https://louib.net/projects/</loc>
+    </url>
+    <url>
+        <loc>https://louib.net/projects/flatpak-rs/</loc>
+        <lastmod>2022-07-04</lastmod>
+    </url>
+    <url>
+        <loc>https://louib.net/projects/fpcli/</loc>
+        <lastmod>2022-07-04</lastmod>
+    </url>
+    <url>
+        <loc>https://louib.net/projects/keepassxc/</loc>
+        <lastmod>2022-07-04</lastmod>
+    </url>
+    <url>
+        <loc>https://louib.net/projects/nix2sbom/</loc>
+        <lastmod>2022-07-04</lastmod>
+    </url>
+</urlset>

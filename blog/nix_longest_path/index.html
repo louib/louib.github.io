@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+<meta content="IE=edge" http-equiv="X-UA-Compatible"/>
+<meta content="text/html; charset=UTF-8" http-equiv="content-type"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<meta name="robots" content="index, follow">
+
+
+
+
+
+
+
+
+
+
+
+
+<title>How deep is your Nix dependency graph?</title>
+
+
+
+<meta name="title" content="How deep is your Nix dependency graph?">
+
+
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://louib.net/blog/nix_longest_path/">
+
+<meta property="og:site_name" content="">
+
+
+<meta property="og:title" content="How deep is your Nix dependency graph?">
+
+
+
+<meta property="og:image" content="https:&#x2F;&#x2F;louib.net&#x2F;favicon.svg">
+
+
+
+<meta property="twitter:card" content="summary_large_image">
+<meta property="twitter:url" content="https://louib.net/blog/nix_longest_path/">
+
+<meta property="twitter:title" content="How deep is your Nix dependency graph?">
+
+
+
+<meta property="twitter:image" content="https:&#x2F;&#x2F;louib.net&#x2F;favicon.svg">
+
+
+<link rel="canonical" href="https://louib.net/blog/nix_longest_path/">
+
+<link rel="shortcut icon" type="image/x-icon" href="https://louib.net/favicon.svg">
+
+
+
+
+<link rel="stylesheet" type="text/css" href="https://speyll.github.io/suCSS/reset-min.css"/>
+<link rel="stylesheet" type="text/css" href="https://louib.net/css/suCSS-min.css"/>
+<link rel="stylesheet" type="text/css" href="https://louib.net/css/style.css"/>
+
+<script src="https://louib.net/js/script.js" defer></script>
+
+
+</head>
+<body>
+      <header>
+          
+
+  
+
+
+  <nav id="nav-bar">
+    
+      <a href="&#x2F;" class="">
+        
+        [home]
+      </a>
+    
+      <a href="&#x2F;blog" class="">
+        
+        [blog]
+      </a>
+    
+      <a href="&#x2F;projects" class="">
+        
+        [projects]
+      </a>
+    
+      <a href="https:&#x2F;&#x2F;github.com&#x2F;louib" class="">
+        
+        [github]
+      </a>
+    
+    <div>
+      <input type="checkbox" id="theme-toggle" style="display: none;">
+      <label for="theme-toggle" id="theme-toggle-label"><svg id="theme-icon" class="icons"><use href="https://louib.net/icons.svg#lightMode"></use></svg></label>
+      <audio id="theme-sound">
+        <source src="https://louib.net/click.ogg" type="audio/ogg">
+      </audio>
+    </div>
+  </nav>
+
+
+      </header>
+      <main>
+          
+<h1 class="title">
+  How deep is your Nix dependency graph?
+</h1>
+<p class="subtitle"><strong>2024-06-03</strong></p>
+<p>I ran into performance issues while refactoring the graph traversal algorithm of <a href="https://github.com/louib/nix2sbom">nix2sbom</a>.
+The program would take a long time to complete, mainly because the same nodes were visited multiple times. The first solution I
+thought of was to keep track of the visited nodes, but the whole situation made me wonder: How big is that dependency graph?</p>
+<h2 id="finding-the-longest-path">Finding the longest path</h2>
+<p>I settled on a simplified version my initial question: How long is the longest path in that dependency graph? I added an option
+to <code>nix2sbom</code> to get that information:</p>
+<pre data-lang="bash" style="background-color:#2b303b;color:#c0c5ce;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#65737e;"># Here, I&#39;m using nix2sbom to get the longest path in the dependency graph of nix2sbom itself.
+</span><span style="color:#bf616a;">nix</span><span> run github:louib/nix2sbom?rev=8ea11305d240a28a4c58520c294c627556ecee87 -- --no-meta --format stats -f github:louib/nix2sbom?rev=8ea11305d240a28a4c58520c294c627556ecee87
+</span></code></pre>
+<p>The answer to our question can be found in the <code>longest_path_length</code> field:</p>
+<pre data-lang="json" style="background-color:#2b303b;color:#c0c5ce;" class="language-json "><code class="language-json" data-lang="json"><span>  &quot;</span><span style="color:#a3be8c;">longest_path_length</span><span>&quot;: {
+</span><span>    &quot;</span><span style="color:#a3be8c;">/nix/store/g4bf7igwz3wmgx6qbhhz77bpbyv6lb70-nix2sbom-main.drv</span><span>&quot;: </span><span style="color:#d08770;">98
+</span><span>  },
+</span></code></pre>
+<p>98? Really? Here's the full path:</p>
+<pre style="background-color:#2b303b;color:#c0c5ce;"><code><span>  &quot;longest_path&quot;: [
+</span><span>    &quot;/nix/store/g4bf7igwz3wmgx6qbhhz77bpbyv6lb70-nix2sbom-main.drv&quot;,
+</span><span>    &quot;/nix/store/5hrcg3b43hgfbfi30qnygp0wp32qc06r-cargo-build-hook.sh.drv&quot;,
+</span><span>    &quot;/nix/store/aq1i2qq524gs4ra3d9kd7f60anpjhym8-cargo-1.77.2.drv&quot;,
+</span><span>    &quot;/nix/store/r20zd7xsl1mszq0yfzl5zvpx2a7kz35y-auditable-cargo-bootstrap-1.76.0.drv&quot;,
+</span><span>    &quot;/nix/store/irv5cx83s7rabbw8a1h6mcrrfig8j9dw-cargo-auditable-0.6.2.drv&quot;,
+</span><span>    &quot;/nix/store/638fxslllq7wyznwr58jga69b4mhfwyf-cargo-auditable-0.6.2-vendor.tar.gz.drv&quot;,
+</span><span>    &quot;/nix/store/5a1rv39g86nij8f93ypcnf3w07lzz000-cargo-1.77.2.drv&quot;,
+</span><span>    &quot;/nix/store/cwycfrkry8jggb8yw513ypwp89agjg5j-rustc-wrapper-1.77.2.drv&quot;,
+</span><span>    &quot;/nix/store/d6003ik7j0m1sjxcp86k90mf1dygjwnq-rustc-1.77.2.drv&quot;,
+</span><span>    &quot;/nix/store/6c0yj2k4cg8jgic13d1aa28dvwn4vys6-llvm-17.0.6.drv&quot;,
+</span><span>    &quot;/nix/store/zp2813dml0ip0w7wsfwd4fmwgdkbcb17-cmake-3.29.2.drv&quot;,
+</span><span>    &quot;/nix/store/7kcyc8yzbksnmwv3d1mrkhyvad71g661-libarchive-3.7.4.drv&quot;,
+</span><span>    &quot;/nix/store/xy8xgydz76rq7151012vks5hidyfx97i-e2fsprogs-1.47.0.drv&quot;,
+</span><span>    &quot;/nix/store/vhf8fpim8ivrbgnr2r6j01a92qyhj4ik-fuse-2.9.9.drv&quot;,
+</span><span>    &quot;/nix/store/3nxwikhnxabihayysqc95ic7d40qsh9g-fuse-3.16.2.drv&quot;,
+</span><span>    &quot;/nix/store/6zk1l8bcwcg7gyd4n5cbs4d291w1m5z6-meson-1.4.0.drv&quot;,
+</span><span>    &quot;/nix/store/g541080x6haw68qq1nphzdabybrnnx61-ninja-1.11.1.drv&quot;,
+</span><span>    &quot;/nix/store/z9i7cqx1ha7iblf21m29mp3dsjs6m7ai-asciidoc-10.2.0.drv&quot;,
+</span><span>    &quot;/nix/store/2ccddwzp4qyy6jcdjpjdj39irvd9kf2q-python3.11-pytest-mock-3.14.0.drv&quot;,
+</span><span>    &quot;/nix/store/08n4hv4aycw8v7g1q4v4gp2xa2nmz4g7-python3.11-pytest-asyncio-0.23.6.drv&quot;,
+</span><span>    &quot;/nix/store/5bk054517v9zyjhvbmi0095nnv92sbkf-python3.11-pytest-8.1.1.drv&quot;,
+</span><span>    &quot;/nix/store/43xj4imgmf339xkk9267lhxdmyzvzdkj-python3.11-iniconfig-2.0.0.drv&quot;,
+</span><span>    &quot;/nix/store/ivcq7bi7mpac4zkhdr5wxwrq8yyhdmyb-python3.11-hatchling-1.24.2.drv&quot;,
+</span><span>    &quot;/nix/store/yhb7j4f8js88swhwvnv64cncp1z9fr79-python3.11-trove-classifiers-2024.4.10.drv&quot;,
+</span><span>    &quot;/nix/store/ag5mrwbmrw57l2ds1cgfnmk859qmxq03-python3.11-calver-2022.06.26.drv&quot;,
+</span><span>    &quot;/nix/store/a2iyf2533k83f8i8ndbligv25dkknfq0-setuptools-build-hook.drv&quot;,
+</span><span>    &quot;/nix/store/fcwvdb2c783bf1ccy8w4q62s2mwwki2s-python3.11-setuptools-69.5.1.drv&quot;,
+</span><span>    &quot;/nix/store/xf5jvvplqg7b8ana9lvdb7v54x23mkfz-pypa-build-hook.sh.drv&quot;,
+</span><span>    &quot;/nix/store/djx6rbfa0wpzzjpny7d9n2q5nrlz21r1-python3.11-build-1.2.1.drv&quot;,
+</span><span>    &quot;/nix/store/h3l7791z1rz3dhydi6bfc981mdj96aqs-python3.11-pyproject-hooks-1.0.0.drv&quot;,
+</span><span>    &quot;/nix/store/6wini1rym0l5sgrhkxrdplsbii07cgh5-pypa-install-hook.drv&quot;,
+</span><span>    &quot;/nix/store/jsw4d7zn1avns3w68xwkdg8v5graik5y-python3.11-installer-0.7.0.drv&quot;,
+</span><span>    &quot;/nix/store/zm8cigdx5z3y884wyi1s7jhm5gs593p4-python3.11-flit-core-3.9.0.drv&quot;,
+</span><span>    &quot;/nix/store/56rpw0ygwz1ahk4p9g13yd3z690lfk4v-pypa-build-hook.sh.drv&quot;,
+</span><span>    &quot;/nix/store/cqfl32nl1m873dfx17j6znzqbiwg83vr-python3.11-bootstrap-build-1.2.1.drv&quot;,
+</span><span>    &quot;/nix/store/l4w6lwb90m224x479q0knvfkggrvmp86-python3.11-bootstrap-tomli-2.0.1.drv&quot;,
+</span><span>    &quot;/nix/store/dl841pj30fbaqbs8x451ifhjnb2ffmcw-python3.11-bootstrap-installer-0.7.0.drv&quot;,
+</span><span>    &quot;/nix/store/8j478smqppa3g8a88qzr16s854zbxlh5-python3.11-bootstrap-flit-core-3.9.0.drv&quot;,
+</span><span>    &quot;/nix/store/xprkyi70sjkbijl5ypmq4i74qv7vmp3g-python3-3.11.9.drv&quot;,
+</span><span>    &quot;/nix/store/l4007ql4y14ym43nz4rnk2xvb7i39ws1-libffi-3.4.6.drv&quot;,
+</span><span>    &quot;/nix/store/npy6ckjpmjqh4qhw3587p9xi455n969g-dejagnu-1.6.3.drv&quot;,
+</span><span>    &quot;/nix/store/7mval8zscx5yl4layh9a70lcmx8r7rzq-expect-5.45.4.drv&quot;,
+</span><span>    &quot;/nix/store/h37ch3ni4p03imz19nwnqijhr65s8vlq-autoreconf-hook.drv&quot;,
+</span><span>    &quot;/nix/store/h3s38whkgzw3z591mvzyfz2bkg87qxqm-automake-1.16.5.drv&quot;,
+</span><span>    &quot;/nix/store/3dddzh9nyq9s3qbdwm8vfgnf6mckx821-autoconf-2.72.drv&quot;,
+</span><span>    &quot;/nix/store/iz31y1lfjkc1h3rjzynjjiqgl8mkjcyh-texinfo-7.0.3.drv&quot;,
+</span><span>    &quot;/nix/store/saakri0iydihf9awvyfn0nknrn0184rj-perl-5.38.2.drv&quot;,
+</span><span>    &quot;/nix/store/b3q8zkxwifgajph2d3k4wn5pnsz8y0b8-perl-5.38.2.tar.gz.drv&quot;,
+</span><span>    &quot;/nix/store/wrahlxhhvkaybyh8qs2da8xh9y6sv2c1-curl-8.7.1.drv&quot;,
+</span><span>    &quot;/nix/store/c6xg8apc9wviial8swwr8yjhmywxyrpn-libkrb5-1.21.2.drv&quot;,
+</span><span>    &quot;/nix/store/sr564371s1vch07y3ld940bg5gigcz1g-openssl-3.0.13.drv&quot;,
+</span><span>    &quot;/nix/store/lgaz4da3mpzyvzjgfrf6q5zc4c2lmz2w-coreutils-9.5.drv&quot;,
+</span><span>    &quot;/nix/store/hnws3zackragq9vhsvxycx28xkrps0qr-perl-5.38.2.drv&quot;,
+</span><span>    &quot;/nix/store/pq8xbhh5syr9qzxd8kg586m4fvnnar6n-libxcrypt-4.4.36.drv&quot;,
+</span><span>    &quot;/nix/store/rq8g9axnpi38491xsvg7fb5pwkjslk1m-perl-5.38.2.drv&quot;,
+</span><span>    &quot;/nix/store/panbw08d4yffvkwkl7fpa2k051sjwpz0-stdenv-linux.drv&quot;,
+</span><span>    &quot;/nix/store/kj60s25m64sijyzlrngnaaz4xywihg8p-gcc-wrapper-13.2.0.drv&quot;,
+</span><span>    &quot;/nix/store/791xby1n843szxlzzz9c37d1h93ffvqv-binutils-wrapper-2.41.drv&quot;,
+</span><span>    &quot;/nix/store/qdrm57vpbrk318i844d0pm0hvpqfibfx-gnugrep-3.11.drv&quot;,
+</span><span>    &quot;/nix/store/ks4kxnnljmfjifik8fz4xyfc27bikn1p-glibc-locales-2.39-52.drv&quot;,
+</span><span>    &quot;/nix/store/w0lha65nhpb8ya0xjjhb4l7jj72rd81p-python3-minimal-3.11.9.drv&quot;,
+</span><span>    &quot;/nix/store/yigrqn6h5wdby20hsbc7l7jdanils595-bzip2-1.0.8.drv&quot;,
+</span><span>    &quot;/nix/store/jhikqgc2lmd3cg1yv92k8qi0rj26knyr-autoreconf-hook.drv&quot;,
+</span><span>    &quot;/nix/store/ll556j52p0maf8hy6p19d8vw7xckv4wd-automake-1.16.5.drv&quot;,
+</span><span>    &quot;/nix/store/vy8fxc24cy7d821sp446przpwjckmxh6-autoconf-2.72.drv&quot;,
+</span><span>    &quot;/nix/store/y408ng6sra3xvhq87sv2rgz3ibmmwvg4-bootstrap-stage4-stdenv-linux.drv&quot;,
+</span><span>    &quot;/nix/store/27b9wfzxv7g8x43whc8krgqgfbc5hvvw-bootstrap-stage4-gcc-wrapper-13.2.0.drv&quot;,
+</span><span>    &quot;/nix/store/k2mw2sd49ns63gnl6hlbi5za2pcg836a-gcc-13.2.0.drv&quot;,
+</span><span>    &quot;/nix/store/hjpadr0lqa2jx69avhg6lzm1vkvv8m0r-libmpc-1.3.1.drv&quot;,
+</span><span>    &quot;/nix/store/y8d0hz8s8zqcs7n296r2cxfzdmph3s0f-mpfr-4.2.1.drv&quot;,
+</span><span>    &quot;/nix/store/07fpbmy07kagb9z3azdl6ssiqxzdn3cj-gmp-6.3.0.drv&quot;,
+</span><span>    &quot;/nix/store/i538jwdc8mrg3zhjr0gqzrmqbgp3zr9a-bootstrap-stage3-stdenv-linux.drv&quot;,
+</span><span>    &quot;/nix/store/cxw46q6wyl881m4d47fiz459rd5j5z97-bootstrap-stage3-gcc-wrapper-13.2.0.drv&quot;,
+</span><span>    &quot;/nix/store/rnnv75hlrqqxcfi16knl4rc3kdx2wn38-binutils-patchelfed-ld-wrapper-2.41.drv&quot;,
+</span><span>    &quot;/nix/store/458hjmxma9adq317v4g6icfj2p0q3ysi-binutils-patchelfed-ld-2.41.drv&quot;,
+</span><span>    &quot;/nix/store/giq55ck4qbyhjak92g7qi60r7yy8a2mc-glibc-2.39-52.drv&quot;,
+</span><span>    &quot;/nix/store/74sy46v3haa27mm4wk1xjbxs6z20y0ch-python3-minimal-3.11.9.drv&quot;,
+</span><span>    &quot;/nix/store/1dwbbh9a5xf0bydfdgq0glz5b38jrqif-bzip2-1.0.8.drv&quot;,
+</span><span>    &quot;/nix/store/ldsr7af4chn38qz4ffv5pw1bcpyck8cm-autoreconf-hook.drv&quot;,
+</span><span>    &quot;/nix/store/hzaakzbh3npimqpkmx7qqc2pf229m9hw-libtool-2.4.7.drv&quot;,
+</span><span>    &quot;/nix/store/sqbmmly1zsfkqb7va1mm24b09x3k4hd8-file-5.45.drv&quot;,
+</span><span>    &quot;/nix/store/4rascx24j2597gjkcxvmwfhjld9x4pl6-zlib-1.3.1.drv&quot;,
+</span><span>    &quot;/nix/store/b1n15s3mv6f3vy0n9yskx4y6hbhgc9mv-bootstrap-stage2-stdenv-linux.drv&quot;,
+</span><span>    &quot;/nix/store/ci63f5znn14m5avccm6753ha5lcidc68-bootstrap-stage2-gcc-wrapper-13.2.0.drv&quot;,
+</span><span>    &quot;/nix/store/fhbw1vlsc7zc1qfr047wbckhfjla1c06-xgcc-13.2.0.drv&quot;,
+</span><span>    &quot;/nix/store/47drhxh4jkq1nn5pni61w3x9lr0mb9r8-libmpc-1.3.1.drv&quot;,
+</span><span>    &quot;/nix/store/k44gvk6ysck2p9k43bw45s9z84davhmk-mpfr-4.2.1.drv&quot;,
+</span><span>    &quot;/nix/store/9kphrq33p95zwqdy9ql6w5hc2c2b2iwq-gmp-6.3.0.drv&quot;,
+</span><span>    &quot;/nix/store/7jrm912kmj6facm1dkpxx8fg52z33a71-bootstrap-stage-xgcc-stdenv-linux.drv&quot;,
+</span><span>    &quot;/nix/store/5lfqd7gf9yb27jpc8f6s5l28bhlq1i6a-bootstrap-stage-xgcc-gcc-wrapper-.drv&quot;,
+</span><span>    &quot;/nix/store/zwqrmdcdr6jk6p01zxdyhs8lvjcksl5w-expand-response-params.drv&quot;,
+</span><span>    &quot;/nix/store/4z34260nasfrw1sh4gh6n79711yrhm97-bootstrap-stage1-stdenv-linux.drv&quot;,
+</span><span>    &quot;/nix/store/d5fyamk2c6b305807npq2j1l4kbaqif1-bootstrap-stage1-gcc-wrapper-.drv&quot;,
+</span><span>    &quot;/nix/store/0slmnpqn8ahqhnskf5mhqmnj5v6n9kq3-bootstrap-stage0-binutils-wrapper-.drv&quot;,
+</span><span>    &quot;/nix/store/gfmqk56r8rv61yqyz9i7rbkrnab27gky-bootstrap-stage0-glibc-bootstrapFiles.drv&quot;,
+</span><span>    &quot;/nix/store/hnfw75cqyly6s0ladkpdqppqllbqsapy-bootstrap-stage0-stdenv-linux.drv&quot;,
+</span><span>    &quot;/nix/store/h3nkdqxk105rmz1i7ckj2swnj77h8fmr-bootstrap-tools.drv&quot;,
+</span><span>    &quot;/nix/store/0m4y3j4pnivlhhpr5yqdvlly86p93fwc-busybox.drv&quot;
+</span><span>  ],
+</span></code></pre>
+<h2 id="excluding-build-time-dependencies">Excluding build-time dependencies</h2>
+<p>The previous answer includes both runtime dependencies and build-time dependencies. Using the <code>--runtime-only</code> option, we can filter out
+build-time dependencies, and get our updated answer:</p>
+<pre data-lang="bash" style="background-color:#2b303b;color:#c0c5ce;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#bf616a;">nix</span><span> run github:louib/nix2sbom?rev=8ea11305d240a28a4c58520c294c627556ecee87 -- --no-meta --format stats -f github:louib/nix2sbom?rev=8ea11305d240a28a4c58520c294c627556ecee87 --runtime-only
+</span></code></pre>
+<p>Without the build-time dependencies, the longest path in the dependency graph is now 29.</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>I admit I didn't expect my dependency graph to be that deep. However, it's hard to compare those numbers
+with those we would obtain from other package managers, especially language-specific package managers like
+<code>npm</code> or <code>cargo</code>. Nix is language-agnostic, and the full list of dependencies for a project is included
+in the dependency graph, all the way up to the bootstrap binaries. </p>
+<p>I wish I had a better conclusion for you, but I'm still trying to make sense of those numbers. Go ahead
+and give <code>nix2sbom</code> a try, you might be surprised how deep your Nix dependency graph is!</p>
+
+
+      </main>
+      <footer>
+          <hr>
+<div id="footer-container">
+  
+  <div>
+    <p>Theme and color theme licensed under <a target="_blank" rel="noopener noreferrer" href="https://en.wikipedia.org/wiki/Licence_MIT">MIT</a>.<br>
+      Built with <a target="_blank" rel="noopener noreferrer" href="https://www.getzola.org">Zola</a> using <a target="_blank" rel="noopener noreferrer" href="https://github.com/Speyll/anemone">anemone</a> theme, <a target="_blank" rel="noopener noreferrer" href="https://speyll.github.io/suCSS/">suCSS</a> framework &amp; <a target="_blank" rel="noopener noreferrer" href="https://github.com/Speyll/veqev">veqev</a>.<br>
+    </p>
+
+  </div>
+  
+</div>
+
+      </footer>
+</body>
+</html>
